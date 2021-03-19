@@ -6,9 +6,10 @@ import operator as op
 import torch
 import numpy as np
 import sys
+from pyrsistent import pmap,pvector, PMap, PList, PVector
+
 sys.setrecursionlimit(5000)
 print("Recursion limit", sys.getrecursionlimit())
-# TODO: Make tensors immutable too
 # TODO: Prog 12 is prolly wrong also
 
 def standard_env():
@@ -44,13 +45,7 @@ def evaluate(exp, sigma=0, env=None):
     if isinstance(exp, str) and exp.startswith('"') and exp.endswith('"'):
         return exp
     elif isinstance(exp, str):
-        try:
-            return env.find(exp)[exp]
-        except Exception:
-            new_env = env
-            while True:
-                print(new_env)
-                new_env = new_env.outer
+        return env.find(exp)[exp]
     elif isinstance(exp, (int, float)):
         return torch.tensor(float(exp))
 
@@ -68,19 +63,6 @@ def evaluate(exp, sigma=0, env=None):
     else:                            # function application
         proc = evaluate(op, sigma, env)
         f_args = [evaluate(arg, sigma, env) for arg in args]
-        #print("EVALUATING", proc, f_args)
-        """
-        if op == 'fac':
-            print(proc.body)
-            print(proc.parms)
-            print(args)
-            print("Environments: ")
-            env = proc.env
-            while True:
-                print(env)
-                env = env.outer
-            raise Exception
-        """
         res = proc(*f_args)
         return res
 
@@ -91,13 +73,14 @@ def get_stream(exp):
 
 
 def run_deterministic_tests():
-
+    """
     for i in range(14,14):
 
         exp = daphne(['desugar-hoppl', '-i', '../CS532-HW5/programs/tests/deterministic/test_{}.daphne'.format(i)])
         print(exp)
         truth = load_truth('programs/tests/deterministic/test_{}.truth'.format(i))
-        ret = evaluate(exp[2])
+        ret = evaluate(exp)
+        ret = ret("dontcare")
         print("Ret:", ret)
         try:
             assert(is_tol(ret, truth))
@@ -105,21 +88,22 @@ def run_deterministic_tests():
             raise AssertionError('return value {} is not equal to truth {} for exp {}'.format(ret,truth,exp))
 
     print('FOPPL Tests passed')
-
-    for i in range(10,13):
+    """
+    for i in range(12,13):
 
         exp = daphne(['desugar-hoppl', '-i', '../CS532-HW5/programs/tests/hoppl-deterministic/test_{}.daphne'.format(i)])
         print(exp)
         truth = load_truth('programs/tests/hoppl-deterministic/test_{}.truth'.format(i))
-        ret = evaluate(exp[2])
-        print("Ret:", ret)
+        ret = evaluate(exp)
+        ret = ret("dontcare")
+        if isinstance(ret, PVector):
+            ret = torch.tensor(ret.tolist())
         try:
             assert(is_tol(ret, truth))
         except:
             raise AssertionError('return value {} is not equal to truth {} for exp {}'.format(ret,truth,exp))
 
         print('Test passed')
-        raise Exception
 
     print('All deterministic tests passed')
 
@@ -146,16 +130,16 @@ def run_probabilistic_tests():
 
 if __name__ == '__main__':
 
-    #run_deterministic_tests()
+    run_deterministic_tests()
     #run_probabilistic_tests()
 
-    for i in range(2,5):
+    for i in range(3,4):
         print(i)
         exp = daphne(['desugar-hoppl', '-i', '../CS532-HW5/programs/{}.daphne'.format(i)])
         print('\n\n\nSample of prior of program {}:'.format(i))
         acc = []
         for _ in range(5000):
-            acc.append(evaluate(exp[2]))
+            acc.append(evaluate(exp)("dontcare"))
         if i == 4:
             with open(str(i) + ".npy", 'wb') as f:
                 for j in range(4):

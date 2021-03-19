@@ -123,11 +123,15 @@ def rest(addr, arg1):
     return arg1[1:]
 
 def conj(addr, arg1, arg2):
-    if arg2.dim() == 0:
-        arg1 = append(addr, arg1, arg2)
+    if isinstance(arg1, PVector):
+        arg2 = pvector([arg2])
+        arg1 = arg2.extend(arg1)
     else:
-        for elm in arg2:
-            arg1 = append(addr, arg1, elm)
+        if arg2.dim() == 0:
+            arg1 = append(addr, arg1, arg2)
+        else:
+            for elm in arg2:
+                arg1 = append(addr, arg1, elm)
     return arg1
 
 def append(addr, arg1, arg2):
